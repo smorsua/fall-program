@@ -23,8 +23,8 @@
 
 ## Roadmap
 
--   [ ] Conectarnos a movil y recibir datos
--   [ ] Mostrar datos sin procesar
--   [ ] Calculo de parametros
--   [ ] Algoritmo detección de caida
+-   [ ] Conectarnos a movil y recibir datos (Sergio)
+-   [ ] Mostrar datos sin procesar (Sergio)
+-   [ ] Calculo de parametros (Alex)
+-   [ ] Algoritmo detección de caida (Alex, solo thresholds)
 -   [ ] Adicional: marcadores verticales, formulario de conexión
