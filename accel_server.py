@@ -18,12 +18,14 @@ from matplotlib import lines
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 
+import collections
+
 # Constants.
-APP_NAME        = "Accelerometer server"
+APP_NAME = "Accelerometer server"
 REFRESH_TIMEOUT = 10  # ms
-SERVER_PORT     = 7000
-SERVER_TIMEOUT  = 5   # s
-SAMPLES         = 1000
+SERVER_PORT = 7000
+SERVER_TIMEOUT = 5  # s
+SAMPLES = 1000
 
 
 #
@@ -58,7 +60,6 @@ class App:
         # Run main loop.
         self.window.mainloop()
 
-
     def create_widgets(self):
         # Right frame.
         frame1 = ttk.Frame(self.window)
@@ -84,21 +85,20 @@ class App:
         frame2.rowconfigure(4, weight=1)
 
         # Controls.
-        self.button_start = ttk.Button(frame2, text="Inicia",
-                                       command=self.start_event)
+        self.button_start = ttk.Button(frame2, text="Inicia", command=self.start_event)
         self.button_start.grid(column=0, row=0, pady=5, sticky="we")
 
-        self.button_stop = ttk.Button(frame2, text="Para",
-                                      command=self.stop_event, state="disabled")
+        self.button_stop = ttk.Button(
+            frame2, text="Para", command=self.stop_event, state="disabled"
+        )
         self.button_stop.grid(column=0, row=1, pady=5, sticky="we")
-
 
     def create_plot(self):
         # Data samples.
-        self.data_t = [0]
-        self.data_x = [0]
-        self.data_y = [0]
-        self.data_z = [0]
+        self.data_t = collections.deque(maxlen=SAMPLES)
+        self.data_x = collections.deque(maxlen=SAMPLES)
+        self.data_y = collections.deque(maxlen=SAMPLES)
+        self.data_z = collections.deque(maxlen=SAMPLES)
 
         # Lines.
         self.line_x = lines.Line2D(self.data_t, self.data_x, color="r")
@@ -108,17 +108,20 @@ class App:
         # Canvas.
         fig = figure.Figure()
 
-        plot = fig.add_subplot()
-        plot.add_line(self.line_x)
-        plot.add_line(self.line_y)
-        plot.add_line(self.line_z)
-        plot.set_xlim(0, SAMPLES)
-        plot.set_ylim(-15, 15)
+        self.plot = fig.add_subplot()
+        self.plot.set_xlabel("Time")
+        self.plot.set_ylabel("Acceleration")
+
+        self.plot.add_line(self.line_x)
+        self.plot.add_line(self.line_y)
+        self.plot.add_line(self.line_z)
+        self.plot.set_xlim(0, SAMPLES)
+        self.plot.set_ylim(-15, 15)
 
         self.canvas = FigureCanvasTkAgg(fig, self.window)
-        self.canvas.get_tk_widget().grid(column=0, row=1, columnspan=3,
-                                         padx=5, pady=5, sticky="nswe")
-
+        self.canvas.get_tk_widget().grid(
+            column=0, row=1, columnspan=3, padx=5, pady=5, sticky="nswe"
+        )
 
     def close_event(self):
         # If already running.
@@ -133,30 +136,6 @@ class App:
         # Accept close event.
         self.window.withdraw()
 
-
-    def draw_samples(self, x, y, z):
-        # Increase and check sample time.
-        t = self.data_t[-1] + 1
-        if t >= SAMPLES:
-            t = 0
-            self.data_t.clear()
-            self.data_x.clear()
-            self.data_y.clear()
-            self.data_z.clear()
-
-        # Append new sample.
-        self.data_t.append(t)
-        self.data_x.append(x)
-        self.data_y.append(y)
-        self.data_z.append(z)
-
-        # Update plot.
-        self.line_x.set_data(self.data_t, self.data_x)
-        self.line_y.set_data(self.data_t, self.data_y)
-        self.line_z.set_data(self.data_t, self.data_z)
-        self.canvas.draw_idle()
-
-
     def refresh_event(self):
         # Return if not running.
         if not self.running:
@@ -168,6 +147,14 @@ class App:
         except socket.error:
             data = []
 
+        x, y, z = self.parse_data(data)
+        self.update_plot(x, y, z)
+        self.update_console(x, y, z)
+
+        # Restart timer.
+        self.window.after(REFRESH_TIMEOUT, self.refresh_event)
+
+    def parse_data(self, data):
         # Find start mark in data.
         try:
             i = data.index(0x80)
@@ -176,38 +163,60 @@ class App:
 
         # Get acceleration samples from data.
         if 0 <= i < (len(data) - 12):
-            x, y, z = struct.unpack("!fff", bytearray(data[i+1:i+1+12]))
-            # Draw acceleration samples
-            self.draw_samples(x, y, z)
-            # Show acceleration samples at the end of text console.
-            text = f"{x:.2f} {y:.2f} {z:.2f}\n"
-            self.text_console.configure(state="normal")
-            self.text_console.insert(tk.END, text)
-            self.text_console.configure(state="disabled")
-            self.text_console.see(tk.END)
+            return struct.unpack("!fff", bytearray(data[i + 1 : i + 1 + 12]))
 
-        # Restart timer.
-        self.window.after(REFRESH_TIMEOUT, self.refresh_event)
+    def update_console(self, x, y, z):
+        text = f"{x:.2f} {y:.2f} {z:.2f}\n"
+        self.text_console.configure(state="normal")
+        self.text_console.insert(tk.END, text)
+        self.text_console.configure(state="disabled")
+        self.text_console.see(tk.END)
 
+    def update_plot(self, x, y, z):
+        # Increase and check sample time.
+        t = self.data_t[-1] + 1
+
+        # Append new sample.
+        self.data_t.append(t)
+        self.data_x.append(x)
+        self.data_y.append(y)
+        self.data_z.append(z)
+
+        # Update plot.
+        self.line_x.set_data(list(self.data_t), list(self.data_x))
+        self.line_y.set_data(list(self.data_t), list(self.data_y))
+        self.line_z.set_data(list(self.data_t), list(self.data_z))
+
+        # Expect changing text
+        self.plot.annotate(
+            "{}".format(x),
+            xy=(2, 1),
+            xytext=(3, 1.5),
+            arrowpods=dict(facecolor="black", shrink=0.05),
+        )
+
+        self.canvas.draw_idle()
 
     def start_event(self):
         # Try to accept connection from TCP client.
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
         self.socket.settimeout(SERVER_TIMEOUT)
         self.socket.bind(("", SERVER_PORT))
         self.socket.listen(1)
         try:
             self.client, addr = self.socket.accept()
         except socket.error:
-            messagebox.showerror(APP_NAME, "No se ha conectado ningún cliente al puerto " +
-                                 str(SERVER_PORT))
+            messagebox.showerror(
+                APP_NAME,
+                "No se ha conectado ningún cliente al puerto " + str(SERVER_PORT),
+            )
             return
 
         # Reset data samples.
-        self.data_t = [0]
-        self.data_x = [0]
-        self.data_y = [0]
-        self.data_z = [0]
+        self.data_t = collections.deque(maxlen=SAMPLES)
+        self.data_x = collections.deque(maxlen=SAMPLES)
+        self.data_y = collections.deque(maxlen=SAMPLES)
+        self.data_z = collections.deque(maxlen=SAMPLES)
 
         # Clear and show client connection in the text console.
         self.text_console.configure(state="normal")
@@ -222,7 +231,6 @@ class App:
         # Update UI.
         self.button_start.configure(state="disabled")
         self.button_stop.configure(state="normal")
-
 
     def stop_event(self):
         # Stop timer.

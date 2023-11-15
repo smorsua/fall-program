@@ -23,8 +23,10 @@
 
 ## Roadmap
 
--   [ ] Conectarnos a movil y recibir datos (Sergio)
--   [ ] Mostrar datos sin procesar (Sergio)
+-   [x] Conectarnos a movil y recibir datos (Sergio)
+-   [x] Mostrar datos sin procesar (Sergio)
+-   [ ] Componente estado de conexión (Sergio)
+-   [ ] Desplegable elegir sample rate
 -   [ ] Calculo de parametros (Alex)
 -   [ ] Algoritmo detección de caida (Alex, solo thresholds)
 -   [ ] Adicional: marcadores verticales, formulario de conexión
