@@ -7,6 +7,10 @@
 -   $v_o$: integrada from the pit, at the beginning of the fall, until the impact, where the
     signal value is lower than 1g.
 
+## Método 1
+
+Detección del impacto por umbrales de SVtot, SVd y SVmaxmin o Z2.
+
 ## Clase: FallDetector
 
 -   Buffer de 2s. El primer algoritmo no necesita buffer (excepto para la detección de postura) y el segundo algoritmo espera durante un segundo.
