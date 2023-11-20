@@ -8,4 +8,5 @@ class IIRFilter:
         self.buf = deque([0] * buf_size, maxlen=buf_size)
 
     def filter(self, input):
+        self.buf.append(input)
         return sosfilt(self.sos, list(self.buf))[-1]
