@@ -14,7 +14,7 @@ class FallDetector:
 
     def process(self, sample):
         sv = FallDetector.sv(sample)
-        sv_buf.push(sv)
+        self.sv_buf.append(sv)
         sv_d = self.sv_d(sv)
         sv_maxmin = self.sv_maxmin()
         is_impact = self.detect_m1(sv, sv_d, sv_maxmin)
@@ -29,7 +29,7 @@ class FallDetector:
 
     @staticmethod
     def sv(sample):
-        return sqrt(sample[0] ** 2 + sample[1] ** 2 + sample[2] ** 2)
+        return math.sqrt(sample[0] ** 2 + sample[1] ** 2 + sample[2] ** 2)
 
     def sv_d(self, sample):
         return self.hpf.filter(sample)

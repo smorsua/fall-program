@@ -8,10 +8,11 @@ from matplotlib import lines
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 from collections import deque
+import more_itertools as mit
 
 APP_NAME = "Accelerometer server"
 REFRESH_TIMEOUT = 10  # ms
-SAMPLES = 1000
+SAMPLES = 100
 
 
 def random_list():
@@ -92,10 +93,10 @@ class Frontend:  # TODO: instead of having a run function, i can pass the callba
 
     def init_plot(self):
         data = {
-            "t": deque(random_list(), maxlen=SAMPLES),
-            "acc_x": deque(random_list(), maxlen=SAMPLES),
-            "acc_y": deque(random_list(), maxlen=SAMPLES),
-            "acc_z": deque(random_list(), maxlen=SAMPLES),
+            "t": deque( maxlen=SAMPLES),
+            "acc_x": deque( maxlen=SAMPLES),
+            "acc_y": deque( maxlen=SAMPLES),
+            "acc_z": deque( maxlen=SAMPLES),
         }
 
         line_x = lines.Line2D(list(data["t"]), list(data["acc_x"]), color="r")
@@ -130,7 +131,7 @@ class Frontend:  # TODO: instead of having a run function, i can pass the callba
 
     def start_event(self):
         # Start timer.
-        self.start_cb()
+        self.start_cb(self)
         self.window.after(REFRESH_TIMEOUT, self.refresh_event)
         self.running = True
 
@@ -152,7 +153,7 @@ class Frontend:  # TODO: instead of having a run function, i can pass the callba
         if not self.running:
             return
 
-        self.refresh_cb()
+        self.refresh_cb(self)
 
         # Restart timer.
         self.window.after(REFRESH_TIMEOUT, self.refresh_event)
@@ -170,12 +171,11 @@ class Frontend:  # TODO: instead of having a run function, i can pass the callba
 
     def update(self, fall_data):
         self.update_impact_status(fall_data["is_impact"])
-        self.update_console("Sample text")
+        self.update_console("x: {:.2f} y: {:.2f} z: {:.2f}\n".format(fall_data["sample"][0],fall_data["sample"][1],fall_data["sample"][2]))
         self.update_plot(fall_data["sample"])
-        self.update_conn_status("Default")  # TODO:  Default should be addr (ip + port)
 
-    def update_impact_status(self):
-        self.impact_status.config(text="Impact: {}".format(self.impact))
+    def update_impact_status(self, is_impact):
+        self.impact_status.config(text="Impact: {}".format(is_impact))
 
     def update_console(self, text):
         self.text_console.configure(state="normal")
@@ -185,7 +185,8 @@ class Frontend:  # TODO: instead of having a run function, i can pass the callba
 
     def update_plot(self, sample):
         # Increase and check sample time.
-        t = list(self.plot["data"]["t"])[-1] + 1
+        t = mit.last(self.plot["data"]["t"], 0) + 1
+        # t = list(self.plot["data"]["t"])[-1] + 1
 
         # Append new sample.
         self.plot["data"]["t"].append(t)
@@ -194,23 +195,25 @@ class Frontend:  # TODO: instead of having a run function, i can pass the callba
         self.plot["data"]["acc_z"].append(sample[2])
 
         # Update plot.
-        self.line_x.set_data(
+        self.plot["line_x"].set_data(
             list(self.plot["data"]["t"]), list(self.plot["data"]["acc_x"])
         )
-        self.line_y.set_data(
+        self.plot["line_y"].set_data(
             list(self.plot["data"]["t"]), list(self.plot["data"]["acc_y"])
         )
-        self.line_z.set_data(
+        self.plot["line_z"].set_data(
             list(self.plot["data"]["t"]), list(self.plot["data"]["acc_z"])
         )
+        
+        self.plot["component"].set_xlim(self.plot["data"]["t"][0], self.plot["data"]["t"][0]+SAMPLES-1)
 
-        self.canvas.draw_idle()
+        self.plot["canvas"].draw_idle()
 
     def update_conn_status(self, addr):
-        self.state["connection"] = addr
+        # self.state["connection"] = addr
         text = ""
         if addr is None:
             text = "Connection Status: Disconnected"
         else:
-            text = "Connection Status: Connected\n{}:{}".format(addr[0], addr[1])
+            text = "Connection Status: Connected\n{}:{}".format(addr[0],addr[1])
         self.connection_status.config(text=text)

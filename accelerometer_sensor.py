@@ -5,10 +5,11 @@ SERVER_PORT = 7000
 SERVER_TIMEOUT = 5  # s
 
 
-class AccelerometerSensor:
+class AccelerometerSensor: #TODO: add callbacks to sensor to update frontend
     def __init__(self):
         self.socket = None
         self.client = None
+        self.addr = None
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.settimeout(SERVER_TIMEOUT)
@@ -17,9 +18,7 @@ class AccelerometerSensor:
     def init(self):
         self.socket.listen(1)
         try:
-            self.client, addr = self.socket.accept()
-            self.update_conn_status(addr)
-            self.update_console(f"Cliente conectado ({addr[0]})\n")
+            self.client, self.addr = self.socket.accept()
         except socket.error:
             print("error creating socket")
             # messagebox.showerror(
@@ -38,8 +37,9 @@ class AccelerometerSensor:
         except socket.error:
             data = []
 
-        return self.parse(data)
+        return AccelerometerSensor.parse(data)
 
+    @staticmethod
     def parse(data):
         # Find start mark in data.
         try:
