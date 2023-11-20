@@ -18,7 +18,7 @@ def random_list():
     return map(lambda x: x / 2, range(SAMPLES))
 
 
-class Frontend:
+class Frontend:  # TODO: instead of having a run function, i can pass the callbacks as constructor parameters
     def __init__(self):
         self.window = None
         self.text_console = None
@@ -26,12 +26,17 @@ class Frontend:
         self.button_stop = None
         self.connection_status = None
         self.impact_status = None
-        self.refresh_callback = None
+        self.start_cb = None
+        self.refresh_cb = None
+        self.stop_cb = None
         self.plot = None
 
         self.init_window()
         self.init_widgets()
         self.init_plot()  # TODO: init_plot should be inside init_widgets
+
+    def run(self):
+        self.window.mainloop()
 
     def init_window(self):
         self.window = tk.Tk()
@@ -125,6 +130,7 @@ class Frontend:
 
     def start_event(self):
         # Start timer.
+        self.start_cb()
         self.window.after(REFRESH_TIMEOUT, self.refresh_event)
         self.running = True
 
@@ -132,20 +138,27 @@ class Frontend:
         self.button_start.configure(state="disabled")
         self.button_stop.configure(state="normal")
 
-    def set_refresh_callback(self, fn):
-        self.refresh_callback = fn
+    def set_start_cb(self, fn):
+        self.start_cb = fn
+
+    def set_refresh_cb(self, fn):
+        self.refresh_cb = fn
+
+    def set_stop_cb(self, fn):
+        self.stop_cb = fn
 
     def refresh_event(self):
         # Return if not running.
         if not self.running:
             return
 
-        self.refresh_callback()
+        self.refresh_cb()
 
         # Restart timer.
         self.window.after(REFRESH_TIMEOUT, self.refresh_event)
 
     def stop_event(self):
+        self.stop_cb()
         # Stop timer.
         self.running = False
 

@@ -14,7 +14,7 @@ class AccelerometerSensor:
         self.socket.settimeout(SERVER_TIMEOUT)
         self.socket.bind(("", SERVER_PORT))
 
-    def init():
+    def init(self):
         self.socket.listen(1)
         try:
             self.client, addr = self.socket.accept()
@@ -28,7 +28,10 @@ class AccelerometerSensor:
             # )
             return
 
-    def read():
+    def close(self):
+        pass  # TODO: close client and socket
+
+    def read(self):
         # Try to receive data from TCP client connection.
         try:
             data = self.client.recv(1024)
