@@ -9,18 +9,18 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 from collections import deque
 import more_itertools as mit
+import time
 
 APP_NAME = "Accelerometer server"
 REFRESH_TIMEOUT = 10  # ms
 SAMPLES = 100
+IMPACT_DELAY = 0.3
 
-
-def random_list():
-    return map(lambda x: x / 2, range(SAMPLES))
 
 
 class Frontend:  # TODO: instead of having a run function, i can pass the callbacks as constructor parameters
     def __init__(self):
+       
         self.window = None
         self.text_console = None
         self.button_start = None
@@ -31,10 +31,13 @@ class Frontend:  # TODO: instead of having a run function, i can pass the callba
         self.refresh_cb = None
         self.stop_cb = None
         self.plot = None
+        self.is_impact = False
+        self.impact_timestamp = time.perf_counter()
 
         self.init_window()
         self.init_widgets()
         self.init_plot()  # TODO: init_plot should be inside init_widgets
+        self.window.after(REFRESH_TIMEOUT, self.refresh_event)
 
     def run(self):
         self.window.mainloop()
@@ -131,13 +134,8 @@ class Frontend:  # TODO: instead of having a run function, i can pass the callba
 
     def start_event(self):
         # Start timer.
-        self.start_cb(self)
-        self.window.after(REFRESH_TIMEOUT, self.refresh_event)
-        self.running = True
-
-        # Update UI.
-        self.button_start.configure(state="disabled")
-        self.button_stop.configure(state="normal")
+        self.start_cb()
+        # self.running = True
 
     def set_start_cb(self, fn):
         self.start_cb = fn
@@ -149,9 +147,9 @@ class Frontend:  # TODO: instead of having a run function, i can pass the callba
         self.stop_cb = fn
 
     def refresh_event(self):
-        # Return if not running.
-        if not self.running:
-            return
+        # # Return if not running.
+        # if not self.running:
+        #     return
 
         self.refresh_cb(self)
 
@@ -161,21 +159,23 @@ class Frontend:  # TODO: instead of having a run function, i can pass the callba
     def stop_event(self):
         self.stop_cb()
         # Stop timer.
-        self.running = False
-
-        # TODO: add close_callback and close the socket and client
-
-        # Update UI.
-        self.button_start.configure(state="normal")
-        self.button_stop.configure(state="disabled")
+        # self.running = False
 
     def update(self, fall_data):
         self.update_impact_status(fall_data["is_impact"])
         self.update_console("x: {:.2f} y: {:.2f} z: {:.2f}\n".format(fall_data["sample"][0],fall_data["sample"][1],fall_data["sample"][2]))
         self.update_plot(fall_data["sample"])
-
+    
     def update_impact_status(self, is_impact):
-        self.impact_status.config(text="Impact: {}".format(is_impact))
+        if is_impact:
+            self.impact_timestamp = time.perf_counter()
+            self.is_impact = is_impact
+        else:
+            now = time.perf_counter()
+            if now - self.impact_timestamp > IMPACT_DELAY:    
+                self.is_impact = is_impact
+            
+        self.impact_status.config(text="Impact: {}".format(self.is_impact))
 
     def update_console(self, text):
         self.text_console.configure(state="normal")
